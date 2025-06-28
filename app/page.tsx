@@ -4,16 +4,22 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { GenerationForm } from '@/components/GenerationForm';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
-import { type GenerateResponse } from '@/lib/validations';
-import { type Language } from '@/lib/translations';
+import { type GenerateResponse, type ViralContentResponse } from '@/lib/validations';
+import type { LanguageCode } from '@/lib/languages';
 
 export default function Home() {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const [generatedData, setGeneratedData] = useState<GenerateResponse | null>(null);
+  const [viralData, setViralData] = useState<ViralContentResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingViral, setIsGeneratingViral] = useState(false);
 
   const handleGenerate = (data: GenerateResponse) => {
     setGeneratedData(data);
+  };
+
+  const handleGenerateViral = (data: ViralContentResponse) => {
+    setViralData(data);
   };
 
   return (
@@ -27,8 +33,11 @@ export default function Home() {
             <GenerationForm
               language={language}
               onGenerate={handleGenerate}
+              onGenerateViral={handleGenerateViral}
               isGenerating={isGenerating}
               setIsGenerating={setIsGenerating}
+              isGeneratingViral={isGeneratingViral}
+              setIsGeneratingViral={setIsGeneratingViral}
             />
           </div>
           
@@ -36,8 +45,10 @@ export default function Home() {
           <div className="lg:col-span-3">
             <ResultsDisplay
               data={generatedData}
+              viralData={viralData}
               language={language}
               isGenerating={isGenerating}
+              isGeneratingViral={isGeneratingViral}
             />
           </div>
         </div>

@@ -88,6 +88,54 @@
   }
 }
 
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="rtl"] .space-x-2 > * + * {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .space-x-3 > * + * {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+[dir="rtl"] .space-x-4 > * + * {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .pl-3 {
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+[dir="rtl"] .pr-3 {
+  padding-right: 0;
+  padding-left: 0.75rem;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
 /* Glassmorphism effects */
 .glass {
   background: rgba(255, 255, 255, 0.1);
@@ -144,4 +192,65 @@
 /* Better focus states */
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* Platform-specific styling */
+.platform-tiktok {
+  background: linear-gradient(135deg, #ff0050, #ff4081);
+}
+
+.platform-instagram {
+  background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+}
+
+.platform-youtube {
+  background: linear-gradient(135deg, #ff0000, #cc0000);
+}
+
+.platform-twitter {
+  background: linear-gradient(135deg, #1da1f2, #0d8bd9);
+}
+
+/* Viral content animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.viral-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Language-specific fonts */
+[lang="ar"] {
+  font-family: 'Noto Sans Arabic', 'Arial', sans-serif;
+}
+
+[lang="zh"] {
+  font-family: 'Noto Sans SC', 'Arial', sans-serif;
+}
+
+[lang="ja"] {
+  font-family: 'Noto Sans JP', 'Arial', sans-serif;
+}
+
+[lang="ru"] {
+  font-family: 'Noto Sans', 'Arial', sans-serif;
+}
+
+/* Cultural color adaptations */
+.culture-arabic {
+  --primary: 34 197 94; /* Green for Islamic culture */
+}
+
+.culture-chinese {
+  --primary: 239 68 68; /* Red for Chinese culture */
+}
+
+.culture-japanese {
+  --primary: 168 85 247; /* Purple for Japanese aesthetics */
 }

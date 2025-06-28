@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import OpenAI from 'openai';
 import { generateFormSchema, generateResponseSchema } from '@/lib/validations';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,6 +11,34 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Get user and check usage limits
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    if (user.generationsUsed >= user.generationsLimit) {
+      return NextResponse.json(
+        { error: 'Generation limit reached. Please upgrade your plan.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     
     // Validate input
@@ -76,6 +107,26 @@ Format your response as valid JSON with these exact keys: productTitle, productD
 
     // Validate the response structure
     const validatedResponse = generateResponseSchema.parse(parsedContent);
+
+    // Save generation to database and update user usage
+    await prisma.$transaction([
+      prisma.generation.create({
+        data: {
+          userId: user.id,
+          productName,
+          category,
+          writingStyle,
+          language,
+          content: JSON.stringify(validatedResponse),
+        },
+      }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          generationsUsed: user.generationsUsed + 1,
+        },
+      }),
+    ]);
 
     return NextResponse.json(validatedResponse);
 

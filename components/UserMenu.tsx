@@ -1,0 +1,83 @@
+'use client';
+
+import { useState } from 'react';
+import { signOut, useSession } from 'next-auth/react';
+import { motion } from 'framer-motion';
+import { User, Settings, LogOut, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
+
+export function UserMenu() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    await signOut({ callbackUrl: '/' });
+  };
+
+  const handleDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  if (!session?.user) {
+    return null;
+  }
+
+  const userInitials = session.user.name
+    ?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase() || session.user.email?.[0].toUpperCase() || 'U';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={session.user.image || ''} alt={session.user.name || ''} />
+            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+              {userInitials}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">
+              {session.user.name || 'User'}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {session.user.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleDashboard}>
+          <BarChart3 className="mr-2 h-4 w-4" />
+          <span>Dashboard</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>{isLoading ? 'Signing out...' : 'Sign out'}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
