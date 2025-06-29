@@ -7,41 +7,71 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { type UrlAnalysisData } from '@/lib/validations';
 import { translations, type Language } from '@/lib/translations';
-import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
+import { toast } from 'sonner';
 
 interface UrlAnalysisProps {
   language: Language;
-  onSubmit: (data: UrlAnalysisData) => void;
+  onGenerate: (data: any) => void;
   isGenerating: boolean;
-  register: UseFormRegister<UrlAnalysisData>;
-  setValue: UseFormSetValue<UrlAnalysisData>;
-  errors: FieldErrors<UrlAnalysisData>;
-  isValid: boolean;
+  setIsGenerating: (loading: boolean) => void;
 }
 
 export function UrlAnalysis({
   language,
-  onSubmit,
+  onGenerate,
   isGenerating,
-  register,
-  setValue,
-  errors,
-  isValid
+  setIsGenerating
 }: UrlAnalysisProps) {
   const [url, setUrl] = useState('');
   const [writingStyle, setWritingStyle] = useState('');
   const t = translations[language];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (url && writingStyle && isValid) {
-      onSubmit({
-        url,
-        writingStyle: writingStyle as any,
-        language: language
+    if (!url || !writingStyle) {
+      toast.error(language === 'en' ? 'Please enter URL and select writing style' : 'Введіть URL та оберіть стиль написання');
+      return;
+    }
+
+    // Validate supported sites
+    const supportedDomains = ['amazon.', 'ebay.', 'aliexpress.', 'rozetka.', 'prom.ua'];
+    const isSupported = supportedDomains.some(domain => url.includes(domain));
+    
+    if (!isSupported) {
+      toast.error(language === 'en' ? 'URL not supported. Please use Amazon, eBay, AliExpress, Rozetka, or Prom.ua' : 'URL не підтримується. Використовуйте Amazon, eBay, AliExpress, Rozetka або Prom.ua');
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      const response = await fetch('/api/parse-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          writingStyle,
+          language
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to analyze URL');
+      }
+
+      const result = await response.json();
+      onGenerate(result);
+      toast.success(language === 'en' ? 'URL analyzed successfully!' : 'URL успішно проаналізовано!');
+      
+    } catch (error) {
+      console.error('URL analysis error:', error);
+      toast.error(error instanceof Error ? error.message : (language === 'en' ? 'Failed to analyze URL' : 'Помилка аналізу URL'));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -58,7 +88,7 @@ export function UrlAnalysis({
       {/* URL Input */}
       <div className="space-y-2">
         <Label htmlFor="url" className="text-sm font-medium text-foreground">
-          {t.competitorUrl} *
+          {language === 'en' ? 'Competitor Product URL' : 'URL товару конкурента'} *
         </Label>
         <div className="relative">
           <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -66,20 +96,14 @@ export function UrlAnalysis({
             id="url"
             type="url"
             value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              setValue('url', e.target.value);
-            }}
-            placeholder={t.urlPlaceholder}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder={language === 'en' ? 'https://amazon.com/product/...' : 'https://rozetka.com.ua/product/...'}
             className="pl-10"
             disabled={isGenerating}
           />
         </div>
-        {errors.url && (
-          <p className="text-sm text-red-500">{errors.url.message}</p>
-        )}
         <p className="text-xs text-muted-foreground">
-          {t.supportedSites}
+          {language === 'en' ? 'Supported: Amazon, eBay, AliExpress, Rozetka, Prom.ua' : 'Підтримуються: Amazon, eBay, AliExpress, Rozetka, Prom.ua'}
         </p>
       </div>
 
@@ -110,10 +134,7 @@ export function UrlAnalysis({
           {t.writingStyle} *
         </Label>
         <Select
-          onValueChange={(value) => {
-            setWritingStyle(value);
-            setValue('writingStyle', value as any);
-          }}
+          onValueChange={setWritingStyle}
           disabled={isGenerating}
         >
           <SelectTrigger>
@@ -127,9 +148,6 @@ export function UrlAnalysis({
             ))}
           </SelectContent>
         </Select>
-        {errors.writingStyle && (
-          <p className="text-sm text-red-500">{errors.writingStyle.message}</p>
-        )}
       </div>
 
       {/* Analyze Button */}
@@ -145,7 +163,7 @@ export function UrlAnalysis({
           {isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t.scraping}
+              {language === 'en' ? 'Analyzing...' : 'Аналізуємо...'}
             </>
           ) : (
             <>

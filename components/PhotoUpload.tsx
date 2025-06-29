@@ -7,28 +7,21 @@ import { Upload, Image as ImageIcon, X, Loader2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { type ImageAnalysisData } from '@/lib/validations';
 import { translations, type Language } from '@/lib/translations';
-import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
+import { toast } from 'sonner';
 
 interface PhotoUploadProps {
   language: Language;
-  onSubmit: (data: ImageAnalysisData, image: File) => void;
+  onGenerate: (data: any) => void;
   isGenerating: boolean;
-  register: UseFormRegister<ImageAnalysisData>;
-  setValue: UseFormSetValue<ImageAnalysisData>;
-  errors: FieldErrors<ImageAnalysisData>;
-  isValid: boolean;
+  setIsGenerating: (loading: boolean) => void;
 }
 
 export function PhotoUpload({
   language,
-  onSubmit,
+  onGenerate,
   isGenerating,
-  register,
-  setValue,
-  errors,
-  isValid
+  setIsGenerating
 }: PhotoUploadProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -40,13 +33,13 @@ export function PhotoUpload({
     if (file) {
       // Check file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
-        alert(language === 'en' ? 'File size must be less than 10MB' : 'Розмір файлу має бути менше 10МБ');
+        toast.error(language === 'en' ? 'File size must be less than 10MB' : 'Розмір файлу має бути менше 10МБ');
         return;
       }
 
       // Check file type
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        alert(language === 'en' ? 'Only JPG, PNG, and WebP images are supported' : 'Підтримуються лише JPG, PNG та WebP зображення');
+        toast.error(language === 'en' ? 'Only JPG, PNG, and WebP images are supported' : 'Підтримуються лише JPG, PNG та WebP зображення');
         return;
       }
 
@@ -77,13 +70,40 @@ export function PhotoUpload({
     setImagePreview(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedImage && writingStyle && isValid) {
-      onSubmit({
-        writingStyle: writingStyle as any,
-        language: language
-      }, selectedImage);
+    if (!selectedImage || !writingStyle) {
+      toast.error(language === 'en' ? 'Please select an image and writing style' : 'Оберіть зображення та стиль написання');
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      formData.append('writingStyle', writingStyle);
+      formData.append('language', language);
+
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to analyze image');
+      }
+
+      const result = await response.json();
+      onGenerate(result);
+      toast.success(language === 'en' ? 'Image analyzed successfully!' : 'Зображення успішно проаналізовано!');
+      
+    } catch (error) {
+      console.error('Image analysis error:', error);
+      toast.error(error instanceof Error ? error.message : (language === 'en' ? 'Failed to analyze image' : 'Помилка аналізу зображення'));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -92,7 +112,7 @@ export function PhotoUpload({
       {/* Image Upload Area */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground">
-          {t.uploadPhoto} *
+          {language === 'en' ? 'Upload Product Photo' : 'Завантажити фото товару'} *
         </Label>
         
         {!selectedImage ? (
@@ -116,10 +136,10 @@ export function PhotoUpload({
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground mb-1">
-                  {t.dragDropPhoto}
+                  {language === 'en' ? 'Drag & drop your product photo here' : 'Перетягніть фото товару сюди'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {t.supportedFormats}
+                  {language === 'en' ? 'JPG, PNG, WebP up to 10MB' : 'JPG, PNG, WebP до 10МБ'}
                 </p>
               </div>
             </motion.div>
@@ -170,10 +190,7 @@ export function PhotoUpload({
           {t.writingStyle} *
         </Label>
         <Select
-          onValueChange={(value) => {
-            setWritingStyle(value);
-            setValue('writingStyle', value as any);
-          }}
+          onValueChange={setWritingStyle}
           disabled={isGenerating}
         >
           <SelectTrigger>
@@ -187,9 +204,6 @@ export function PhotoUpload({
             ))}
           </SelectContent>
         </Select>
-        {errors.writingStyle && (
-          <p className="text-sm text-red-500">{errors.writingStyle.message}</p>
-        )}
       </div>
 
       {/* Analyze Button */}
@@ -205,7 +219,7 @@ export function PhotoUpload({
           {isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t.analyzing}
+              {language === 'en' ? 'Analyzing...' : 'Аналізуємо...'}
             </>
           ) : (
             <>

@@ -53,10 +53,14 @@ model User {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  generations Generation[]
-  payments    Payment[]
+  accounts      Account[]
+  sessions      Session[]
+  generations   Generation[]
+  payments      Payment[]
+  teamMembers   TeamMember[]
+  ownedTeams    Team[]       @relation("TeamOwner")
+  bulkJobs      BulkJob[]
+  apiUsage      ApiUsage[]
 }
 
 model VerificationToken {
@@ -75,9 +79,15 @@ model Generation {
   writingStyle String
   language     String
   content      String   // JSON string
+  teamId       String?
+  apiKeyId     String?
+  bulkJobId    String?
   createdAt    DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team     Team?    @relation(fields: [teamId], references: [id])
+  apiKey   ApiKey?  @relation(fields: [apiKeyId], references: [id])
+  bulkJob  BulkJob? @relation(fields: [bulkJobId], references: [id])
 }
 
 model Payment {
@@ -91,4 +101,98 @@ model Payment {
   createdAt        DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  ownerId     String
+  plan        String   @default("business")
+  settings    String?  // JSON string for team settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User           @relation("TeamOwner", fields: [ownerId], references: [id])
+  members     TeamMember[]
+  apiKeys     ApiKey[]
+  generations Generation[]
+  bulkJobs    BulkJob[]
+  invites     TeamInvite[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      String   // owner, admin, editor, viewer
+  joinedAt  DateTime @default(now())
+
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model TeamInvite {
+  id        String   @id @default(cuid())
+  teamId    String
+  email     String
+  role      String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String
+  key         String   @unique
+  permissions String   // JSON array of permissions
+  usageCount  Int      @default(0)
+  lastUsed    DateTime?
+  isActive    Boolean  @default(true)
+  teamId      String
+  createdAt   DateTime @default(now())
+
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  generations Generation[]
+  usage       ApiUsage[]
+}
+
+model ApiUsage {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  userId    String
+  endpoint  String
+  method    String
+  status    Int
+  timestamp DateTime @default(now())
+
+  apiKey    ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BulkJob {
+  id          String   @id @default(cuid())
+  userId      String
+  teamId      String
+  name        String
+  status      String   // pending, processing, completed, failed
+  totalItems  Int
+  processed   Int      @default(0)
+  successful  Int      @default(0)
+  failed      Int      @default(0)
+  inputData   String   // JSON string
+  results     String?  // JSON string
+  errorLog    String?  // JSON string
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  generations Generation[]
 }
